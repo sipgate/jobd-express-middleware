@@ -2,11 +2,60 @@ import * as express from "express";
 import { Request, Response, Router } from "express";
 import * as xmlParser from "express-xml-bodyparser";
 import { logger } from "./logger";
+import * as isNumber from "is-number";
 import { Job, Trigger } from "./model";
 import * as xml from "xml";
 
-function toMember(key: string, value: string) {
-	return { member: [{ name: key }, { value: [{ string: value }] }] };
+function toMember(key: string, value: string| number) {
+	return { member: [{ name: key }, { value: [{ [isNumber(value) ? "i4" : "string"]: value }] }] };
+}
+
+function toJobMember(job: Job) {
+	const jobStruct = {
+		member: [
+			{ name: "jobs" },
+			{
+				value: [
+					{
+						struct: [
+							{
+								member: [
+									{ name: job.name },
+									{
+										value: [
+											{
+												struct: [{
+													member: [
+														{
+															name: "interval"
+														},
+														{
+															value: [
+																{
+																	struct: Object.keys(job.interval).sort().map(key =>
+																		toMember(key, job.interval[key])
+																	)
+																}
+															]
+														}
+													]
+												},
+												toMember("maxFailuresAllowedBeforeNotification", job.maxFailuresAllowedBeforeNotification)
+
+											]
+											}
+										]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	};
+	// console.log(JSON.stringify(jobStruct, null, 2))
+	return jobStruct;
 }
 
 function toResponse(systemName: string, jobs: Job[]) {
@@ -22,7 +71,8 @@ function toResponse(systemName: string, jobs: Job[]) {
 										struct: [
 											toMember("faultString", "ok"),
 											toMember("faultCode", "200"),
-											toMember("systemName", systemName)
+											toMember("systemName", systemName),
+											...jobs.map(toJobMember)
 										]
 									}
 								]
