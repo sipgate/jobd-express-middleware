@@ -1,78 +1,128 @@
-import { NextFunction, Request, Response, Router } from "express";
+import * as express from "express";
+import { Request, Response, Router } from "express";
+import * as xmlParser from "express-xml-bodyparser";
 import { logger } from "./logger";
-import { JobDFunction } from "./model";
-import { text } from "body-parser";
+import { Job, Trigger } from "./model";
+import * as xml from "xml";
 
-function isJobDRequest(req: Request) {
-	const body = JSON.stringify(req.body);
-	const isTriggerJob = body && body.match(/cron.triggerJob/i);
-	return isTriggerJob;
+function toMember(key: string, value: string) {
+	return { member: [{ name: key }, { value: [{ string: value }] }] };
 }
 
-async function parseJobDRequest(req: Request) {
-	logger("Body", req.body);
-	return new Promise((resolve, reject) => {
-		try {
-			let uniqueId = null;
-			let notificationUrl = null;
-			req.body.methodcall.params.forEach(params => {
-				params.param.forEach(param => {
-					param.value.forEach(value => {
-						value.struct.forEach(struct => {
-							struct.member.forEach(member => {
-								if (member.name.includes("uniqueid")) {
-									uniqueId = member.value[0].string[0];
-								} else if (member.name.includes("notificationUrl")) {
-									notificationUrl = member.value[0].string[0];
-								}
-							});
+function toResponse(systemName: string, jobs: Job[]) {
+	return {
+		methodResponse: [
+			{
+				params: [
+					{
+						param: [
+							{
+								value: [
+									{
+										struct: [
+											toMember("faultString", "ok"),
+											toMember("faultCode", "200"),
+											toMember("systemName", systemName)
+										]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	};
+}
+
+function isGetCronTab(req: Request): boolean {
+	return /cron\.getCronTab/i.test(JSON.stringify(req.body));
+}
+
+function isTriggerJob(req: Request): boolean {
+	return /cron\.triggerJob/i.test(JSON.stringify(req.body));
+}
+
+function parseTriggerJobRequest(req: Request): Trigger {
+	let id = null;
+	let name = null;
+	let url = null;
+
+	try {
+		req.body.methodcall.params.forEach(params => {
+			params.param.forEach(param => {
+				param.value.forEach(value => {
+					value.struct.forEach(struct => {
+						struct.member.forEach(member => {
+							if (member.name.includes("uniqueid")) {
+								id = member.value[0].string[0];
+							} else if (member.name.includes("jobName")) {
+								name = member.value[0].string[0];
+							} else if (member.name.includes("notificationUrl")) {
+								url = member.value[0].string[0];
+							}
 						});
 					});
 				});
 			});
-			resolve({
-				uniqueId,
-				notificationUrl
-			});
-		} catch (e) {
-			reject(e);
-		}
-	});
-}
-
-async function handleJobDRequest(jobdFunction: JobDFunction, req: Request, res: Response) {
-	try {
-		const data = await parseJobDRequest(req);
-		logger("Triggering jobd function", data);
-		const startTime = Date.now();
-		const result = await jobdFunction();
-		const endTime = Date.now();
-		const executionTime = endTime - startTime;
-		logger(`JobD function execution took ${executionTime}ms`);
-		res.sendStatus(200);
-	} catch (e) {
-		logger("Failed to execute jobd function", e);
-		res.sendStatus(500);
+		});
+	} catch (error) {
+		logger("Could not parse job request", error);
 	}
+
+	return {
+		id,
+		name,
+		url
+	};
 }
 
-function createMiddlware(name: string, cron: string, jobdFunction: JobDFunction) {
-	logger(`Create JobD function ${name} with cron ${cron}`);
+function createMiddleware(systemName: string, jobs: Job[]) {
+	logger(`Initializing JobD middleware`);
 	const router = Router();
 
-	router.post("/RPC2", text({ type: "*/*" }), async function(req: Request, res: Response) {
-		try {
-			if (isJobDRequest(req)) {
-				await handleJobDRequest(jobdFunction, req, res);
-				// Do not continue routing context
+	// TODO check if this works after build
+	router.use(express.static("public"));
+
+	router.post("/RPC2", xmlParser(), async function(req: Request, res: Response) {
+		if (isGetCronTab(req)) {
+			res.set("Content-Type", "text/xml");
+			res.send(xml(toResponse(systemName, jobs)));
+		} else if (isTriggerJob(req)) {
+			const { id, name, url } = parseTriggerJobRequest(req);
+			const job = jobs.find(job => job.name === name);
+
+			if (!id || !name || !url) {
+				res.sendStatus(500);
 				return;
+			} else if (!job) {
+				logger(`Job ${name} not found`);
+				res.sendStatus(404);
+				return;
+			} else {
+				logger(`Job ${name} found`);
+				res.sendStatus(200);
 			}
-		} catch (e) {
-			logger("Cannot handle JobD request", e);
+
+			try {
+				const startTime = Date.now();
+				await job.action();
+				const endTime = Date.now();
+
+				logger(`${name} took ${endTime - startTime} seconds`);
+
+				// TODO send success to notificationUrl with uniqueid
+			} catch (error) {
+				logger(`Job ${name} failed`, error);
+				// TODO send error to notificationUrl with uniqueid
+				console.log("Success", id, url);
+			}
+		} else {
+			res.sendStatus(404);
 		}
 	});
 
 	return router;
 }
 
-export default createMiddlware;
+export default createMiddleware;

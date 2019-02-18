@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<collection name="jobd-express-middleware" version="0.01">
+	<interface id="cron.getCronTab">
+		<description>description</description>
+		<input>
+			<scalar name="directTouchUrl" optional="yes" type="string"/>
+			<scalar name="uniqueid" optional="yes" type="string"/>
+		</input>
+		<output>
+			<scalar name="systemName" optional="no" type="string"/>
+			<scalar name="serial" optional="no" type="int"/>
+			<struct name="jobs">
+				<struct name="*">
+					<struct name="interval">
+						<scalar name="secondsOfMinute" type="string"/>
+						<scalar name="minutesOfHour" type="string"/>
+						<scalar name="hoursOfDay" type="string"/>
+						<scalar name="daysOfWeek" type="string"/>
+						<scalar name="daysOfMonth" type="string"/>
+						<scalar name="timeout" type="int"/>
+					</struct>
+					<scalar name="triggerDirectly" type="string"/>
+				</struct>
+			</struct>
+		</output>
+	</interface>
+	<interface id="cron.triggerJob">
+		<description/>
+		<input>
+			<scalar name="jobName" type="string"/>
+			<scalar name="uniqueid" type="string"/>
+			<scalar name="notificationUrl" type="string"/>
+		</input>
+		<output>
+		</output>
+	</interface>
+</collection>

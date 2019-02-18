@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<methodCall>
+	<methodName>cron.triggerJob</methodName>
+	<params>
+		<param>
+			<value>
+				<struct>
+					<member>
+						<name>notificationUrl</name>
+						<value>
+							<string>http://somebody:2008hajoa@jobd.service.sipgate.net:3358/RPC2</string>
+						</value>
+					</member>
+					<member>
+						<name>jobName</name>
+						<value>
+							<string>deactivateExpiredCodes</string>
+						</value>
+					</member>
+					<member>
+						<name>uniqueid</name>
+						<value>
+							<string>short-term-verification-service-1539098169129</string>
+						</value>
+					</member>
+				</struct>
+			</value>
+		</param>
+	</params>
+</methodCall>
+
+<!--
+<?xml version="1.0"?>
+<methodCall>
+	<methodName>jobd.updateEvent</methodName>
+	<params>
+		<param>
+			<value>
+				<struct>
+					<member>
+						<name>status</name>
+						<value>
+							<string>success</string>
+						</value>
+					</member>
+					<member>
+						<name>uniqueid</name>
+						<value>
+							<string>samuraid-1539098316457</string>
+						</value>
+					</member>
+					<member>
+						<name>systemName</name>
+						<value>
+							<string>samuraid</string>
+						</value>
+					</member>
+					<member>
+						<name>eventName</name>
+						<value>
+							<string>callAccounting</string>
+						</value>
+					</member>
+				</struct>
+			</value>
+		</param>
+	</params>
+</methodCall>
+
+
+
+
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<methodCall>
+	<methodName>jobd.updateEvent</methodName>
+	<params>
+		<param>
+			<value>
+				<struct>
+					<member>
+						<name>systemName</name>
+						<value>
+							<string>JobDaemon</string>
+						</value>
+					</member>
+					<member>
+						<name>eventName</name>
+						<value>
+							<string>deactivateExpiredCodes</string>
+						</value>
+					</member>
+					<member>
+						<name>uniqueid</name>
+						<value>
+							<string>short-term-verification-service-1539098169129</string>
+						</value>
+					</member>
+					<member>
+						<name>status</name>
+						<value>
+							<string>success</string>
+						</value>
+					</member>
+				</struct>
+			</value>
+		</param>
+	</params>
+</methodCall>
+ -->
