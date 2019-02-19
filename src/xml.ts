@@ -3,7 +3,7 @@ import * as isNumber from "is-number";
 import { logger } from "./logger";
 import { Job, Trigger } from "./model";
 
-function toMember(key: string, value: string| number): any {
+function toMember(key: string, value: string | number): any {
 	return { member: [{ name: key }, { value: [{ [isNumber(value) ? "i4" : "string"]: value }] }] };
 }
 
@@ -21,25 +21,28 @@ function toJobMember(job: Job): any {
 									{
 										value: [
 											{
-												struct: [{
-													member: [
-														{
-															name: "interval"
-														},
-														{
-															value: [
-																{
-																	struct: Object.keys(job.interval).sort().map(key =>
-																		toMember(key, job.interval[key])
-																	)
-																}
-															]
-														}
-													]
-												},
-												toMember("maxFailuresAllowedBeforeNotification", job.maxFailuresAllowedBeforeNotification)
-
-											]
+												struct: [
+													{
+														member: [
+															{
+																name: "interval"
+															},
+															{
+																value: [
+																	{
+																		struct: Object.keys(job.interval)
+																			.sort()
+																			.map(key => toMember(key, job.interval[key]))
+																	}
+																]
+															}
+														]
+													},
+													toMember(
+														"maxFailuresAllowedBeforeNotification",
+														job.maxFailuresAllowedBeforeNotification
+													)
+												]
 											}
 										]
 									}
@@ -53,7 +56,7 @@ function toJobMember(job: Job): any {
 	};
 }
 
-export function toResponse(systemName: string, jobs: Job[]): any {
+export function toResponse(struct: any[]): any {
 	return {
 		methodResponse: [
 			{
@@ -63,11 +66,55 @@ export function toResponse(systemName: string, jobs: Job[]): any {
 							{
 								value: [
 									{
+										struct
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	};
+}
+
+export function getCronTabResponse(systemName: string, jobs: Job[]) {
+	return toResponse([
+		toMember("faultString", "ok"),
+		toMember("faultCode", "200"),
+		toMember("systemName", systemName),
+		...jobs.map(toJobMember)
+	]);
+}
+
+export function successResponse() {
+	return toResponse([toMember("faultString", "ok"), toMember("faultCode", "200")]);
+}
+
+export function methodCallResponse(
+	methodName: string,
+	systemName: string,
+	eventName: string,
+	success: boolean,
+	uniqueId: string
+) {
+	return {
+		methodCall: [
+			{
+				methodName
+			},
+			{
+				params: [
+					{
+						param: [
+							{
+								value: [
+									{
 										struct: [
-											toMember("faultString", "ok"),
-											toMember("faultCode", "200"),
-											toMember("systemName", systemName),
-											...jobs.map(toJobMember)
+											toMember("eventName", eventName),
+											toMember("status", success ? "success" : "error"),
+											toMember("uniqueid", uniqueId),
+											toMember("systemName", systemName)
 										]
 									}
 								]

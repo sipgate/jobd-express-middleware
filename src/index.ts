@@ -1,3 +1,4 @@
+import axios from "axios";
 import * as express from "express";
 // tslint:disable-next-line:no-duplicate-imports
 import { Request, Response, Router } from "express";
@@ -5,7 +6,12 @@ import * as xmlParser from "express-xml-bodyparser";
 import * as xml from "xml";
 import { logger } from "./logger";
 import { Job } from "./model";
-import { parseTriggerJobRequest, toResponse } from "./xml";
+import {
+	getCronTabResponse,
+	methodCallResponse,
+	parseTriggerJobRequest,
+	successResponse
+} from "./xml";
 
 function isGetCronTab(req: Request): boolean {
 	return /cron\.getCronTab/i.test(JSON.stringify(req.body));
@@ -15,15 +21,28 @@ function isTriggerJob(req: Request): boolean {
 	return /cron\.triggerJob/i.test(JSON.stringify(req.body));
 }
 
+async function respondJobStatus(url, systemName,name, success: boolean, id) {
+	const response = xml(methodCallResponse("jobd.updateEvent", systemName, name, success, id));
+	logger(`Responding job status to ${url}`, response);
+
+	const { statusText, status, data } = await axios.post(
+		url,
+		response,
+		{
+			headers: { "content-type": "application/xml" }
+		}
+	);
+	logger("JobD repsonse result", { statusText, status, data });
+}
+
 function requestHandler(systemName: string, jobs: Job[]) {
 	return async (req: Request, res: Response) => {
 		if (isGetCronTab(req)) {
 			logger(`GetCronTab ${systemName}`);
-			res.set("Content-Type", "text/xml");
-			res.send(xml(toResponse(systemName, jobs)));
+			res.type("xml").send(xml(getCronTabResponse(systemName, jobs)));
 		} else if (isTriggerJob(req)) {
 			const { id, name, url } = parseTriggerJobRequest(req);
-			logger(`Triggering job ${id}/${name} - ${url}`);
+			logger(`Triggering job ${id}/${name}`);
 			try {
 				const job = jobs.find(j => j.name === name);
 
@@ -32,24 +51,22 @@ function requestHandler(systemName: string, jobs: Job[]) {
 					return;
 				} else if (!job) {
 					logger(`Job ${name} not found`);
-					res.sendStatus(404);
+					res.type("xml").sendStatus(404);
 					return;
 				} else {
 					logger(`Job ${name} found`);
-					res.sendStatus(200);
+					res.type("xml").send(xml(successResponse()));
 				}
 
 				const startTime: number = Date.now();
 				await job.action();
 				const endTime: number = Date.now();
 
-				logger(`${name} took ${endTime - startTime}ms`);
-
-				// TODO send success to notificationUrl with uniqueid
+				logger(`Job ${name} succeded. It took ${endTime - startTime}ms`);
+				respondJobStatus(url, systemName,name, true, id);
 			} catch (error) {
 				logger(`Job ${name} failed`, error);
-				// TODO send error to notificationUrl with uniqueid
-				logger("Success", id, url);
+				respondJobStatus(url, systemName,name, false, id);
 			}
 		} else {
 			res.sendStatus(404);
