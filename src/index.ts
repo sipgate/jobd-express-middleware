@@ -2,88 +2,10 @@ import * as express from "express";
 // tslint:disable-next-line:no-duplicate-imports
 import { Request, Response, Router } from "express";
 import * as xmlParser from "express-xml-bodyparser";
-import * as isNumber from "is-number";
 import * as xml from "xml";
 import { logger } from "./logger";
 import { Job, Trigger } from "./model";
-
-
-function toMember(key: string, value: string| number): any {
-	return { member: [{ name: key }, { value: [{ [isNumber(value) ? "i4" : "string"]: value }] }] };
-}
-
-function toJobMember(job: Job): any {
-	return {
-		member: [
-			{ name: "jobs" },
-			{
-				value: [
-					{
-						struct: [
-							{
-								member: [
-									{ name: job.name },
-									{
-										value: [
-											{
-												struct: [{
-													member: [
-														{
-															name: "interval"
-														},
-														{
-															value: [
-																{
-																	struct: Object.keys(job.interval).sort().map(key =>
-																		toMember(key, job.interval[key])
-																	)
-																}
-															]
-														}
-													]
-												},
-												toMember("maxFailuresAllowedBeforeNotification", job.maxFailuresAllowedBeforeNotification)
-
-											]
-											}
-										]
-									}
-								]
-							}
-						]
-					}
-				]
-			}
-		]
-	};
-}
-
-function toResponse(systemName: string, jobs: Job[]): any {
-	return {
-		methodResponse: [
-			{
-				params: [
-					{
-						param: [
-							{
-								value: [
-									{
-										struct: [
-											toMember("faultString", "ok"),
-											toMember("faultCode", "200"),
-											toMember("systemName", systemName),
-											...jobs.map(toJobMember)
-										]
-									}
-								]
-							}
-						]
-					}
-				]
-			}
-		]
-	};
-}
+import { parseTriggerJobRequest, toResponse } from "./xml";
 
 function isGetCronTab(req: Request): boolean {
 	return /cron\.getCronTab/i.test(JSON.stringify(req.body));
@@ -91,40 +13,6 @@ function isGetCronTab(req: Request): boolean {
 
 function isTriggerJob(req: Request): boolean {
 	return /cron\.triggerJob/i.test(JSON.stringify(req.body));
-}
-
-function parseTriggerJobRequest(req: Request): Trigger {
-	let id: string = null;
-	let name: string = null;
-	let url: string = null;
-
-	try {
-		req.body.methodcall.params.forEach(params => {
-			params.param.forEach(param => {
-				param.value.forEach(value => {
-					value.struct.forEach(struct => {
-						struct.member.forEach(member => {
-							if (member.name.includes("uniqueid")) {
-								id = member.value[0].string[0];
-							} else if (member.name.includes("jobName")) {
-								name = member.value[0].string[0];
-							} else if (member.name.includes("notificationUrl")) {
-								url = member.value[0].string[0];
-							}
-						});
-					});
-				});
-			});
-		});
-	} catch (error) {
-		logger("Could not parse job request", error);
-	}
-
-	return {
-		id,
-		name,
-		url
-	};
 }
 
 function createMiddleware(systemName: string, jobs: Job[]): Router {
