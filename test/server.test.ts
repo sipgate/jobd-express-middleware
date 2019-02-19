@@ -62,3 +62,12 @@ test("cron.getCronTab", done => {
 			});
 		});
 });
+
+test("cron.triggerJob", done => {
+	const requestXml: string = loadXmlAsString("test/triggerJob.request.xml");
+	request(app)
+		.post("/RPC2")
+		.send(requestXml)
+		.set("Content-Type", "application/xml")
+		.expect(200,done);
+});
