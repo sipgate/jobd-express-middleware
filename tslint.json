@@ -11,7 +11,7 @@
 		"semicolon": true,
 		"no-implicit-dependencies": false,
 		"interface-name": false,
-		"no-any": true,
+		"no-any": false,
 		"quotemark": [true, "double"]
 	}
 }

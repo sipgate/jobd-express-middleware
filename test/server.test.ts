@@ -2,8 +2,8 @@ import * as express from "express";
 import * as fs from "fs";
 import * as request from "supertest";
 import * as xml2js from "xml2js";
-import jobd from "./";
-import { Job } from "./model";
+import jobd from "../src/index";
+import { Job } from "../src/model";
 
 const job: Job = {
 	action: () => Promise.resolve(),
@@ -44,7 +44,7 @@ test("functions.xml", done => {
 });
 
 test("cron.getCronTab", done => {
-	const expected: string = loadXmlAsString("test/getCronTab_expected.xml");
+	const expected: string = loadXmlAsString("test/getCronTab.expected.xml");
 	request(app)
 		.post("/RPC2")
 		.send("<xml><method>cron.getCronTab</method></xml>")
@@ -52,7 +52,7 @@ test("cron.getCronTab", done => {
 		.expect(expected)
 		.expect(200)
 		.end((e, res) => {
-			writeXmlFile("test/getCronTab_actual.xml", res.text);
+			writeXmlFile("test/getCronTab.actual.xml", res.text);
 			xml2js.parseString(res.text, (e1,result) => {
 				xml2js.parseString(expected, (e2,resultt) => {
 					// tslint:disable-next-line:no-console

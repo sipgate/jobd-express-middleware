@@ -6,6 +6,8 @@
 # testing
 /coverage
 
+test/*.actual.xml
+
 # production
 /build
 /electron-build

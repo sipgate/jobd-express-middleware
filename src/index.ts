@@ -1,17 +1,19 @@
 import * as express from "express";
+// tslint:disable-next-line:no-duplicate-imports
 import { Request, Response, Router } from "express";
 import * as xmlParser from "express-xml-bodyparser";
-import { logger } from "./logger";
 import * as isNumber from "is-number";
-import { Job, Trigger } from "./model";
 import * as xml from "xml";
+import { logger } from "./logger";
+import { Job, Trigger } from "./model";
 
-function toMember(key: string, value: string| number) {
+
+function toMember(key: string, value: string| number): any {
 	return { member: [{ name: key }, { value: [{ [isNumber(value) ? "i4" : "string"]: value }] }] };
 }
 
-function toJobMember(job: Job) {
-	const jobStruct = {
+function toJobMember(job: Job): any {
+	return {
 		member: [
 			{ name: "jobs" },
 			{
@@ -54,11 +56,9 @@ function toJobMember(job: Job) {
 			}
 		]
 	};
-	// console.log(JSON.stringify(jobStruct, null, 2))
-	return jobStruct;
 }
 
-function toResponse(systemName: string, jobs: Job[]) {
+function toResponse(systemName: string, jobs: Job[]): any {
 	return {
 		methodResponse: [
 			{
@@ -94,9 +94,9 @@ function isTriggerJob(req: Request): boolean {
 }
 
 function parseTriggerJobRequest(req: Request): Trigger {
-	let id = null;
-	let name = null;
-	let url = null;
+	let id: string = null;
+	let name: string = null;
+	let url: string = null;
 
 	try {
 		req.body.methodcall.params.forEach(params => {
@@ -127,20 +127,20 @@ function parseTriggerJobRequest(req: Request): Trigger {
 	};
 }
 
-function createMiddleware(systemName: string, jobs: Job[]) {
+function createMiddleware(systemName: string, jobs: Job[]): Router {
 	logger(`Initializing JobD middleware`);
-	const router = Router();
+	const router: Router = Router();
 
 	// TODO check if this works after build
 	router.use(express.static("public"));
 
-	router.post("/RPC2", xmlParser(), async function(req: Request, res: Response) {
+	router.post("/RPC2", xmlParser(), async (req: Request, res: Response) => {
 		if (isGetCronTab(req)) {
 			res.set("Content-Type", "text/xml");
 			res.send(xml(toResponse(systemName, jobs)));
 		} else if (isTriggerJob(req)) {
 			const { id, name, url } = parseTriggerJobRequest(req);
-			const job = jobs.find(job => job.name === name);
+			const job: Job = jobs.find(j => j.name === name);
 
 			if (!id || !name || !url) {
 				res.sendStatus(500);
@@ -155,9 +155,9 @@ function createMiddleware(systemName: string, jobs: Job[]) {
 			}
 
 			try {
-				const startTime = Date.now();
+				const startTime: number = Date.now();
 				await job.action();
-				const endTime = Date.now();
+				const endTime: number = Date.now();
 
 				logger(`${name} took ${endTime - startTime} seconds`);
 
@@ -165,7 +165,7 @@ function createMiddleware(systemName: string, jobs: Job[]) {
 			} catch (error) {
 				logger(`Job ${name} failed`, error);
 				// TODO send error to notificationUrl with uniqueid
-				console.log("Success", id, url);
+				logger("Success", id, url);
 			}
 		} else {
 			res.sendStatus(404);
