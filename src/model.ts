@@ -1,9 +1,3 @@
-export interface Trigger {
-	name: string;
-	id: string;
-	url: string;
-}
-
 export interface Job {
 	name: string;
 	interval: {

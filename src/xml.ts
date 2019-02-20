@@ -1,8 +1,11 @@
 import { Request } from "express";
-import * as isNumber from "is-number";
 import * as xml from "xml";
 import { logger } from "./logger";
-import { Job, Trigger } from "./model";
+import { Job } from "./model";
+
+function isNumber(x: any): x is number {
+	return typeof x === "number";
+}
 
 function member(key: string, value: string | number) {
 	return { member: [{ name: key }, { value: [{ [isNumber(value) ? "i4" : "string"]: value }] }] };
@@ -33,7 +36,9 @@ function jobMember(job: Job) {
 																	{
 																		struct: Object.keys(job.interval)
 																			.sort()
-																			.map(key => member(key, job.interval[key]))
+																			.map((key: keyof Job["interval"]) =>
+																				member(key, job.interval[key])
+																			)
 																	}
 																]
 															}
@@ -130,17 +135,17 @@ export function methodCallResponse(
 	});
 }
 
-export function parseTriggerRequest(req: Request): Trigger {
+export function parseTriggerRequest(req: Request) {
 	let id: string = null;
 	let name: string = null;
 	let url: string = null;
 
 	try {
-		req.body.methodcall.params.forEach(params => {
-			params.param.forEach(p => {
-				p.value.forEach(v => {
-					v.struct.forEach(s => {
-						s.member.forEach(m => {
+		req.body.methodcall.params.forEach((params: any) => {
+			params.param.forEach((p: any) => {
+				p.value.forEach((v: any) => {
+					v.struct.forEach((s: any) => {
+						s.member.forEach((m: any) => {
 							if (m.name.includes("uniqueid")) {
 								id = m.value[0].string[0];
 							} else if (m.name.includes("jobName")) {
