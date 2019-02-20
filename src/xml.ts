@@ -1,13 +1,14 @@
 import { Request } from "express";
 import * as isNumber from "is-number";
+import * as xml from "xml";
 import { logger } from "./logger";
 import { Job, Trigger } from "./model";
 
-function toMember(key: string, value: string | number): any {
+function member(key: string, value: string | number) {
 	return { member: [{ name: key }, { value: [{ [isNumber(value) ? "i4" : "string"]: value }] }] };
 }
 
-function toJobMember(job: Job): any {
+function jobMember(job: Job) {
 	return {
 		member: [
 			{ name: "jobs" },
@@ -32,13 +33,13 @@ function toJobMember(job: Job): any {
 																	{
 																		struct: Object.keys(job.interval)
 																			.sort()
-																			.map(key => toMember(key, job.interval[key]))
+																			.map(key => member(key, job.interval[key]))
 																	}
 																]
 															}
 														]
 													},
-													toMember(
+													member(
 														"maxFailuresAllowedBeforeNotification",
 														job.maxFailuresAllowedBeforeNotification
 													)
@@ -56,7 +57,7 @@ function toJobMember(job: Job): any {
 	};
 }
 
-export function toResponse(struct: any[]): any {
+export function response(struct: any[]) {
 	return {
 		methodResponse: [
 			{
@@ -78,17 +79,19 @@ export function toResponse(struct: any[]): any {
 	};
 }
 
-export function getCronTabResponse(systemName: string, jobs: Job[]) {
-	return toResponse([
-		toMember("faultString", "ok"),
-		toMember("faultCode", "200"),
-		toMember("systemName", systemName),
-		...jobs.map(toJobMember)
-	]);
+export function cronTabResponse(systemName: string, jobs: Job[]) {
+	return xml(
+		response([
+			member("faultString", "ok"),
+			member("faultCode", "200"),
+			member("systemName", systemName),
+			...jobs.map(jobMember)
+		])
+	);
 }
 
 export function successResponse() {
-	return toResponse([toMember("faultString", "ok"), toMember("faultCode", "200")]);
+	return xml(response([member("faultString", "ok"), member("faultCode", "200")]));
 }
 
 export function methodCallResponse(
@@ -98,7 +101,7 @@ export function methodCallResponse(
 	success: boolean,
 	uniqueId: string
 ) {
-	return {
+	return xml({
 		methodCall: [
 			{
 				methodName
@@ -111,10 +114,10 @@ export function methodCallResponse(
 								value: [
 									{
 										struct: [
-											toMember("eventName", eventName),
-											toMember("status", success ? "success" : "error"),
-											toMember("uniqueid", uniqueId),
-											toMember("systemName", systemName)
+											member("eventName", eventName),
+											member("status", success ? "success" : "error"),
+											member("uniqueid", uniqueId),
+											member("systemName", systemName)
 										]
 									}
 								]
@@ -124,26 +127,26 @@ export function methodCallResponse(
 				]
 			}
 		]
-	};
+	});
 }
 
-export function parseTriggerJobRequest(req: Request): Trigger {
+export function parseTriggerRequest(req: Request): Trigger {
 	let id: string = null;
 	let name: string = null;
 	let url: string = null;
 
 	try {
 		req.body.methodcall.params.forEach(params => {
-			params.param.forEach(param => {
-				param.value.forEach(value => {
-					value.struct.forEach(struct => {
-						struct.member.forEach(member => {
-							if (member.name.includes("uniqueid")) {
-								id = member.value[0].string[0];
-							} else if (member.name.includes("jobName")) {
-								name = member.value[0].string[0];
-							} else if (member.name.includes("notificationUrl")) {
-								url = member.value[0].string[0];
+			params.param.forEach(p => {
+				p.value.forEach(v => {
+					v.struct.forEach(s => {
+						s.member.forEach(m => {
+							if (m.name.includes("uniqueid")) {
+								id = m.value[0].string[0];
+							} else if (m.name.includes("jobName")) {
+								name = m.value[0].string[0];
+							} else if (m.name.includes("notificationUrl")) {
+								url = m.value[0].string[0];
 							}
 						});
 					});
