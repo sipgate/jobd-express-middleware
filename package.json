@@ -42,7 +42,7 @@
 		"watch": "DEBUG=jobd-middleware nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
 		"test": "jest",
 		"format": "prettier --write src/*.ts",
-		"postinstall": "tsc"
+		"prepublish": "yarn build"
 	},
 	"husky": {
 		"hooks": {
