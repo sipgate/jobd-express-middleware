@@ -1,9 +1,11 @@
 {
 	"compilerOptions": {
-		"target": "esnext",
+		"target": "es5",
 		"module": "commonjs",
 		"outDir": "dist",
-		"sourceMap": true
+		"sourceMap": true,
+		"declaration": true,
+		"noImplicitAny": true
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules", "src/**/*.test.ts", "test/*.test.ts"]
