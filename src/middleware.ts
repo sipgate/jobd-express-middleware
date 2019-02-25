@@ -3,6 +3,7 @@ import * as express from "express";
 // tslint:disable-next-line:no-duplicate-imports
 import { Request, Response, Router } from "express";
 import * as xmlParser from "express-xml-bodyparser";
+import * as path from "path";
 import { logger } from "./logger";
 import { Job } from "./model";
 import { cronTabResponse, methodCallResponse, parseTriggerRequest, successResponse } from "./xml";
@@ -74,8 +75,7 @@ export function jobd(systemName: string, jobs: Job[]): Router {
 	logger(`Initializing JobD middleware`);
 	const router: Router = Router();
 
-	// TODO check if this works after build
-	router.use(express.static("public"));
+	router.use(express.static(path.join(__dirname, "public")));
 	router.post("/RPC2", xmlParser(), requestHandler(systemName, jobs));
 
 	return router;
